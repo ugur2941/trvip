@@ -3,9 +3,6 @@ import sys
 import time
 from playwright.sync_api import sync_playwright, Error as PlaywrightError
 
-# Eğer tarayıcıyı görerek test etmek isterseniz False yapın
-HEADLESS_MODE = True 
-
 def find_working_domain(page):
     """Verilen aralıkta çalışan ve doğru formattaki trgoals domain'ini bulur."""
     MANUAL_DOMAIN = "https://trgoals1495.xyz/"
@@ -41,13 +38,25 @@ def main():
     with sync_playwright() as p:
         print("🚀 Playwright ile Akıllı Ağ Dinleyici (Sniffer) Başlatılıyor...")
         
-        browser = p.chromium.launch(headless=HEADLESS_MODE)
+        # GitHub Actions ortamı için gerekli argümanlar
+        browser_args = [
+            '--autoplay-policy=no-user-gesture-required', # Otomatik oynatma izni buraya taşındı
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu'
+        ]
+
+        # Headless mode CI ortamında True olmalıdır
+        browser = p.chromium.launch(headless=True, args=browser_args)
+        
         context = browser.new_context(
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
             ignore_https_errors=True
         )
-        # Sayfa izinlerini ayarla (Otomatik oynatma vb.)
-        context.grant_permissions(['autoplay'])
+        
+        # Hata veren satır kaldırıldı: context.grant_permissions(['autoplay']) 
+        
         page = context.new_page()
 
         domain = find_working_domain(page)
@@ -102,36 +111,34 @@ def main():
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             print(f"[{i}/{len(channels)}] {channel_name}...", end=' ')
+            sys.stdout.flush() # Logların anlık düşmesi için
             
-            # Bu kanal için m3u8 linkini saklayacak değişken
             found_m3u8 = None
 
-            # --- AĞ DİNLEYİCİSİ TANIMLA ---
             def handle_request(request):
                 nonlocal found_m3u8
                 try:
-                    # Sadece .m3u8 ile biten istekleri yakala
                     if ".m3u8" in request.url and found_m3u8 is None:
                         found_m3u8 = request.url
                 except:
                     pass
 
-            # Dinleyiciyi aktif et
+            # Listener ekle
             page.on("request", handle_request)
 
             try:
                 url = f"{domain}/channel.html?id={channel_id}"
-                # Sayfaya git ama tamamen yüklenmesini bekleme, video isteği erken gelebilir
-                page.goto(url, timeout=15000, wait_until='domcontentloaded')
+                # Sayfaya git
+                page.goto(url, timeout=20000, wait_until='domcontentloaded')
                 
-                # 6 saniye boyunca isteğin düşmesini bekle
+                # Linkin ağa düşmesi için bekle (Maksimum 8 saniye)
                 start_time = time.time()
-                while time.time() - start_time < 6:
+                while time.time() - start_time < 8:
                     if found_m3u8:
                         break
-                    page.wait_for_timeout(200) # İşlemciyi yormamak için kısa bekleme
+                    page.wait_for_timeout(250)
 
-                # Dinleyiciyi kaldır (bir sonraki döngüye temiz girmek için)
+                # Temizlik
                 page.remove_listener("request", handle_request)
 
                 if found_m3u8:
@@ -140,10 +147,9 @@ def main():
                     m3u_content.append(found_m3u8)
                     created += 1
                 else:
-                    print("-> ❌ Link ağ trafiğine düşmedi.")
+                    print("-> ❌ Link bulunamadı.")
 
             except Exception as e:
-                # Hata durumunda da temizlik yap
                 page.remove_listener("request", handle_request)
                 print(f"-> ❌ Hata: {str(e)[:50]}...")
                 continue
