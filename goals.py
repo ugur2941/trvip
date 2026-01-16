@@ -125,10 +125,10 @@ def main():
         # Regex Açıklaması:
         # (?:const|var|let) -> const, var veya let ile başlayabilir
         # \s+ -> en az bir boşluk
-        # (?:BASE_URL|baseurl) -> BASE_URL veya baseurl olabilir (büyük/küçük harf duyarsız)
+        # (?:_URL|baseurl) -> BASE_URL veya baseurl olabilir (büyük/küçük harf duyarsız)
         # \s*=\s* -> eşittir işareti ve etrafındaki olası boşluklar
         # ["\'](.*?)["\'] -> tırnak içindeki URL'yi yakala
-        regex_pattern = re.compile(r'(?:const|var|let)\s+(?:BASE_URL|baseurl)\s*=\s*["\'](.*?)["\']', re.IGNORECASE)
+        regex_pattern = re.compile(r'(?:const|var|let)\s+(?:BASE_URL|baseurl|url|URL)\s*=\s*["\'](.*?)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             try:
