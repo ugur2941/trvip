@@ -1,7 +1,5 @@
 import re
-import os
 import sys
-import time
 from playwright.sync_api import sync_playwright, Error as PlaywrightError
 
 def find_working_domain(page):
@@ -42,7 +40,7 @@ def find_working_domain(page):
 
 def main():
     with sync_playwright() as p:
-        print("🚀 Trgoals M3U8 İndirici (HTML Tarama Modu) Başlatılıyor...")
+        print("🚀 Trgoals M3U8 İndirici (Fix B_URL Modu) Başlatılıyor...")
         
         browser_args = [
             '--autoplay-policy=no-user-gesture-required',
@@ -107,9 +105,9 @@ def main():
         output_filename = "kanallar.m3u8"
         created = 0
         
-        # --- GÜNCELLENMİŞ REGEX ---
-        # Hem BASE_URL, hem baseurl, hem de B_URL ihtimallerini arar.
-        regex_pattern = re.compile(r'(?:const|var|let)\s+(?:BASE_URL|baseurl|B_URL)\s*=\s*["\'](.*?)["\']', re.IGNORECASE)
+        # --- DÜZELTİLMİŞ REGEX ---
+        # Artık önünde const/var olup olmadığına bakmadan B_URL="..." yapısını arıyor.
+        regex_pattern = re.compile(r'(?:BASE_URL|baseurl|B_URL)\s*=\s*["\'](.*?)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             try:
@@ -124,7 +122,6 @@ def main():
 
                 if match:
                     baseurl = match.group(1)
-                    # Bazen baseurl sonunda '/' olmayabilir, garantiye alalım
                     if not baseurl.endswith('/'):
                         baseurl += '/'
                         
@@ -133,10 +130,10 @@ def main():
                     m3u_content.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="{category}",{channel_name}')
                     m3u_content.append(direct_url)
                     
-                    print(f"-> ✅ Link: {direct_url[-30:]}...")
+                    print(f"-> ✅ Link: {direct_url[-35:]}...")
                     created += 1
                 else:
-                    print("-> ❌ URL değişkeni bulunamadı.")
+                    print("-> ❌ B_URL değişkeni bulunamadı.")
                 
             except PlaywrightError:
                 print("-> ❌ Sayfaya ulaşılamadı.")
