@@ -7,31 +7,33 @@ from playwright.sync_api import sync_playwright, Error as PlaywrightError
 def find_working_domain(page):
     """Verilen aralıkta çalışan ve doğru formattaki trgoals domain'ini bulur."""
     
+    # Manuel kontrol (Hız için)
     MANUAL_DOMAIN = "https://trgoals1495.xyz/"
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     try:
-        response = page.goto(MANUAL_DOMAIN, timeout=20000, wait_until='domcontentloaded')
+        response = page.goto(MANUAL_DOMAIN, timeout=10000, wait_until='domcontentloaded')
         if response and response.ok:
             final_url = page.url.rstrip('/')
-            print(f"✅ Öncelikli domain başarıyla bulundu: {final_url}")
+            print(f"✅ Öncelikli domain aktif: {final_url}")
             return final_url
     except PlaywrightError:
-        print(f"⚠️ Öncelikli domain'e bağlanılamadı. Otomatik arama başlatılacak...")
+        print(f"⚠️ Öncelikli domain yanıt vermedi.")
 
     base = "https://trgoals"
-    start_range = 1495
-    end_range = 2500
+    start_range = 1490
+    end_range = 1530
     domain_pattern = re.compile(r'https://trgoals[0-9]+\.xyz')
 
     print(f"\n🔍 Otomatik arama: trgoals{start_range}.xyz → trgoals{end_range-1}.xyz")
     for i in range(start_range, end_range):
         test_domain = f"{base}{i}.xyz"
         try:
-            response = page.goto(test_domain, timeout=15000, wait_until='domcontentloaded')
+            print(f"   Kontrol ediliyor: {test_domain}...", end="\r")
+            response = page.goto(test_domain, timeout=5000, wait_until='domcontentloaded')
             final_url = page.url.rstrip('/')
             
             if response and response.ok and domain_pattern.match(final_url):
-                print(f"✅ Otomatik arama ile domain bulundu: {final_url}")
+                print(f"\n✅ Domain bulundu: {final_url}")
                 return final_url
         except PlaywrightError:
             continue
@@ -40,9 +42,8 @@ def find_working_domain(page):
 
 def main():
     with sync_playwright() as p:
-        print("🚀 Playwright ile M3U8 Kanal İndirici Başlatılıyor...")
+        print("🚀 Trgoals M3U8 İndirici (HTML Tarama Modu) Başlatılıyor...")
         
-        # GitHub Actions ve Linux ortamları için gerekli argümanlar
         browser_args = [
             '--autoplay-policy=no-user-gesture-required',
             '--no-sandbox',
@@ -51,7 +52,6 @@ def main():
             '--disable-gpu'
         ]
         
-        # Headless mode True olarak ayarlandı
         browser = p.chromium.launch(headless=True, args=browser_args)
         
         context = browser.new_context(
@@ -63,11 +63,11 @@ def main():
         domain = find_working_domain(page)
 
         if not domain:
-            print("❌ UYARI: Hiçbir geçerli domain bulunamadı - işlem sonlandırılacak.")
+            print("\n❌ Hata: Çalışan domain bulunamadı.")
             browser.close()
             sys.exit(1)
 
-        print(f"\n📡 Tanımlanan statik kanal listesi kullanılacak.")
+        print(f"\n📡 Kanal listesi taranacak...")
         channels = {
             # BeinSports Kategorisi
             "yayinzirve": ("beIN Sports 1 ☪️", "BeinSports"),
@@ -86,54 +86,34 @@ def main():
             "yayint1": ("Tivibu Sports 1", "Tivibu"),
             "yayint2": ("Tivibu Sports 2", "Tivibu"),
             "yayint3": ("Tivibu Sports 3", "Tivibu"),
-            "yayint4": ("Tivibu Sports 4", "Tivibu"),
-            # Smart Sports Kategorisi
+            # Smart Sports
             "yayinsmarts": ("Smart Sports", "Smart Sports"),
             "yayinsms2": ("Smart Sports 2", "Smart Sports"),
-            # NBA Kategorisi
+            # NBA
             "yayinnbatv": ("NBA TV", "NBA"),
-            # Ulusal Kategorisi
+            # Ulusal
             "yayinatv": ("ATV", "Ulusal"),
             "yayintv8": ("TV8", "Ulusal"),
             "yayintv85": ("TV8.5", "Ulusal"),
             "yayinas": ("A Spor", "Ulusal"),
-            # Tabii Kategorisi
+            # Tabii
             "yayinex1": ("Tâbii 1", "Tabii"),
-            "yayinex2": ("Tâbii 2", "Tabii"),
-            "yayinex3": ("Tâbii 3", "Tabii"),
-            "yayinex4": ("Tâbii 4", "Tabii"),
-            "yayinex5": ("Tâbii 5", "Tabii"),
-            "yayinex6": ("Tâbii 6", "Tabii"),
-            "yayinex7": ("Tâbii 7", "Tabii"),
-            "yayinex8": ("Tâbii 8", "Tabii"),
-            # TRT Kategorisi
-            "yayintrt1": ("TRT 1", "TRT"),
-            "yayintrtspor": ("TRT Spor", "TRT"),
-            "yayintrtspor2": ("TRT Spor 2", "TRT"),
-            # Euro Sport Kategorisi
+            # Euro Sport
             "yayineu1": ("Euro Sport 1", "Euro Sport"),
             "yayineu2": ("Euro Sport 2", "Euro Sport"),
         }
-        print(f"✅ {len(channels)} adet kanal işlenmek üzere yüklendi.")
-
 
         m3u_content = []
         output_filename = "kanallar.m3u8"
-        print(f"\n📺 {len(channels)} kanal için linkler işleniyor...")
         created = 0
         
-        # Regex Açıklaması:
-        # (?:const|var|let) -> const, var veya let ile başlayabilir
-        # \s+ -> en az bir boşluk
-        # (?:BASE_URL|baseurl|B_URL|b_url) -> BASE_URL veya baseurl olabilir (büyük/küçük harf duyarsız)
-        # \s*=\s* -> eşittir işareti ve etrafındaki olası boşluklar
-        # ["\'](.*?)["\'] -> tırnak içindeki URL'yi yakala
-        regex_pattern = re.compile(r'(?:const|var|let)\s+(?:BASE_URL|baseurl|B_URL|b_url)\s*=\s*["\'](.*?)["\']', re.IGNORECASE)
+        # --- GÜNCELLENMİŞ REGEX ---
+        # Hem BASE_URL, hem baseurl, hem de B_URL ihtimallerini arar.
+        regex_pattern = re.compile(r'(?:const|var|let)\s+(?:BASE_URL|baseurl|B_URL)\s*=\s*["\'](.*?)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             try:
-                print(f"[{i}/{len(channels)}] {channel_name} işleniyor...", end=' ')
-                # Logların anlık düşmesi için flush
+                print(f"[{i}/{len(channels)}] {channel_name}...", end=' ')
                 sys.stdout.flush() 
 
                 url = f"{domain}/channel.html?id={channel_id}"
@@ -142,19 +122,22 @@ def main():
                 content = page.content()
                 match = regex_pattern.search(content)
 
-                if not match:
-                    print("-> ❌ BASE_URL bulunamadı.")
-                    continue
+                if match:
+                    baseurl = match.group(1)
+                    # Bazen baseurl sonunda '/' olmayabilir, garantiye alalım
+                    if not baseurl.endswith('/'):
+                        baseurl += '/'
+                        
+                    direct_url = f"{baseurl}{channel_id}.m3u8"
+                    
+                    m3u_content.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="{category}",{channel_name}')
+                    m3u_content.append(direct_url)
+                    
+                    print(f"-> ✅ Link: {direct_url[-30:]}...")
+                    created += 1
+                else:
+                    print("-> ❌ URL değişkeni bulunamadı.")
                 
-                baseurl = match.group(1)
-                direct_url = f"{baseurl}{channel_id}.m3u8"
-                
-                m3u_content.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="{category}",{channel_name}')
-                m3u_content.append(direct_url)
-                
-                print("-> ✅ Link bulundu.")
-                created += 1
-                time.sleep(0.5)
             except PlaywrightError:
                 print("-> ❌ Sayfaya ulaşılamadı.")
                 continue
@@ -167,19 +150,11 @@ def main():
 #EXT-X-REFERER:{domain}/
 #EXT-X-ORIGIN:{domain}"""
             with open(output_filename, "w", encoding="utf-8") as f:
-                f.write(header)
-                f.write("\n") 
+                f.write(header + "\n")
                 f.write("\n".join(m3u_content))
-            print(f"\n📂 {created} kanal başarıyla '{output_filename}' dosyasına kaydedildi.")
+            print(f"\n📂 Dosya hazır: {output_filename} ({created} kanal)")
         else:
-            print("\nℹ️  BASE_URL içeren hiçbir kanal linki bulunamadığı için dosya oluşturulmadı.")
-
-        print("\n" + "="*50)
-        print("📊 İŞLEM SONUCLARI")
-        print("="*50)
-        print(f"✅ Başarıyla oluşturulan link: {created}")
-        print(f"❌ Başarısız veya atlanan kanal: {len(channels) - created}")
-        print("\n🎉 İşlem başarıyla tamamlandı!")
+            print("\n❌ Hiçbir kanal bulunamadı.")
 
 if __name__ == "__main__":
     main()
