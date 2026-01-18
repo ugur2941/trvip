@@ -107,7 +107,7 @@ def main():
         
         # --- DÜZELTİLMİŞ REGEX ---
         # Artık önünde const/var olup olmadığına bakmadan B_URL="..." yapısını arıyor.
-        regex_pattern = re.compile(r'(?:BASE_URL|baseurl|B_URL|baseUrl)\s*=\s*["\'](.*?)["\']', re.IGNORECASE)
+        regex_pattern = re.compile(r'(?:baseUrl|BASE_URL|B_URL)\s*(?:=|:)\s*["\'](.*?)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             try:
