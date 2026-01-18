@@ -40,7 +40,7 @@ def find_working_domain(page):
 
 def main():
     with sync_playwright() as p:
-        print("🚀 Trgoals M3U8 İndirici (Fix B_URL Modu) Başlatılıyor...")
+        print("🚀 Trgoals M3U8 İndirici (Akıllı Link Tarama Modu) Başlatılıyor...")
         
         browser_args = [
             '--autoplay-policy=no-user-gesture-required',
@@ -105,9 +105,14 @@ def main():
         output_filename = "kanallar.m3u8"
         created = 0
         
-        # --- DÜZELTİLMİŞ REGEX ---
-        # Artık önünde const/var olup olmadığına bakmadan B_URL="..." yapısını arıyor.
-        regex_pattern = re.compile(r'(?:baseUrl|BASE_URL|B_URL)\s*(?:=|:)\s*["\'](.*?)["\']', re.IGNORECASE)
+        # --- AKILLI REGEX (UNIVERSAL PATTERN) ---
+        # Bu Regex şunu der:
+        # 1. Tırnak işareti (") veya (') ile başlayan,
+        # 2. https:// ile devam eden,
+        # 3. Arada harf/sayı olan,
+        # 4. Ve kesinlikle ".sbs/" ile biten bir şey bul.
+        # Değişken adı (B_URL, config, zart, zurt) umrumuzda değil.
+        regex_pattern = re.compile(r'["\'](https?://[a-zA-Z0-9.-]+\.sbs/?)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             try:
@@ -122,6 +127,7 @@ def main():
 
                 if match:
                     baseurl = match.group(1)
+                    # Site bazen sonuna / koymayı unutursa biz tamamlayalım
                     if not baseurl.endswith('/'):
                         baseurl += '/'
                         
@@ -133,7 +139,7 @@ def main():
                     print(f"-> ✅ Link: {direct_url[-35:]}...")
                     created += 1
                 else:
-                    print("-> ❌ B_URL değişkeni bulunamadı.")
+                    print("-> ❌ .sbs uzantılı yayın linki bulunamadı.")
                 
             except PlaywrightError:
                 print("-> ❌ Sayfaya ulaşılamadı.")
