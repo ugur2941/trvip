@@ -6,7 +6,7 @@ def find_working_domain(page):
     """Verilen aralıkta çalışan ve doğru formattaki trgoals domain'ini bulur."""
     
     # Manuel kontrol (Hız için)
-    MANUAL_DOMAIN = "https://trgoals1512xyz/"
+    MANUAL_DOMAIN = "https://trgoals1512.xyz/"
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     try:
         response = page.goto(MANUAL_DOMAIN, timeout=10000, wait_until='domcontentloaded')
@@ -18,7 +18,7 @@ def find_working_domain(page):
         print(f"⚠️ Öncelikli domain yanıt vermedi.")
 
     base = "https://trgoals"
-    start_range = 1490
+    start_range = 1512
     end_range = 1530
     domain_pattern = re.compile(r'https://trgoals[0-9]+\.xyz')
 
