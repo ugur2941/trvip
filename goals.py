@@ -6,7 +6,7 @@ def find_working_domain(page):
     """Verilen aralıkta çalışan ve doğru formattaki trgoals domain'ini bulur."""
     
     # Manuel kontrol (Hız için)
-    MANUAL_DOMAIN = "https://trgoals1501.xyz/"
+    MANUAL_DOMAIN = "https://trgoals1512xyz/"
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     try:
         response = page.goto(MANUAL_DOMAIN, timeout=10000, wait_until='domcontentloaded')
