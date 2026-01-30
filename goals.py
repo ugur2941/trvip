@@ -12,7 +12,7 @@ def find_working_domain(page):
     domain_pattern = re.compile(r'https?://(?:www\.)?trgoals[0-9]+\.xyz', re.IGNORECASE)
 
     # 1. MANUEL KONTROL (Senin çalıştığını bildiğin adres)
-    MANUAL_DOMAIN = "https://trgoals1522.xyz/"
+    MANUAL_DOMAIN = "https://trgoals1512.xyz/"
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     
     try:
