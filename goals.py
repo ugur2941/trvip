@@ -14,7 +14,7 @@ def find_working_domain(context):
 
     # 1. MANUEL KONTROL
     # Test için burayı bilerek 1512 yapabilirsin, kod aşağıda doğrusunu bulmalı.
-    MANUAL_DOMAIN = "https://trgoals1512.xyz/" 
+    MANUAL_DOMAIN = "https://trgoals1522.xyz/" 
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     
     page = context.new_page()
