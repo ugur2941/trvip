@@ -5,110 +5,119 @@ from playwright.sync_api import sync_playwright, Error as PlaywrightError
 def find_working_domain(page):
     """
     Verilen aralıkta çalışan, doğru formattaki trgoals domain'ini bulur.
-    'www' takılarını ve protokol farklarını (http/https) tolere eder.
+    Zaman aşımı süreleri artırılmış ve bot koruması önlemleri alınmıştır.
     """
     
-    # GÜNCELLENMİŞ REGEX:
-    # 1. https veya http olabilir (https?)
-    # 2. www. olabilir veya olmayabilir ((?:www\.)?)
-    # 3. trgoals + sayılar + .xyz uzantısı
+    # Regex: https veya http, www opsiyonel, trgoals + sayılar + .xyz
     domain_pattern = re.compile(r'https?://(?:www\.)?trgoals[0-9]+\.xyz', re.IGNORECASE)
 
-    # 1. MANUEL KONTROL (Senin verdiğin çalışan adresi buraya ekledim)
-    MANUAL_DOMAIN = "https://trgoals1512.xyz/"
+    # 1. MANUEL KONTROL (Senin çalıştığını bildiğin adres)
+    MANUAL_DOMAIN = "https://trgoals1522.xyz/"
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     
     try:
-        response = page.goto(MANUAL_DOMAIN, timeout=10000, wait_until='domcontentloaded')
+        # Timeout süresini 20 saniyeye çıkardık (Yavaş siteler için)
+        response = page.goto(MANUAL_DOMAIN, timeout=20000, wait_until='domcontentloaded')
         if response and response.ok:
             final_url = page.url.rstrip('/')
             
-            # KONTROL
             if domain_pattern.match(final_url) and "giris" not in final_url:
-                print(f"✅ Öncelikli domain aktif ve geçerli: {final_url}")
+                print(f"✅ Öncelikli domain aktif: {final_url}")
                 return final_url
             else:
-                print(f"⚠️ Öncelikli domain reddedildi: {final_url}")
-                print(f"   (Sebep: Regex uymadı veya 'giris' sayfasına yönlendi)")
-                
+                print(f"⚠️ Öncelikli domain reddedildi (Giriş sayfası veya format dışı): {final_url}")
     except PlaywrightError as e:
-        print(f"⚠️ Öncelikli domain yanıt vermedi: {e}")
+        print(f"⚠️ Öncelikli domain hatası: {e}")
 
-    # 2. OTOMATİK TARAMA
+    # 2. OTOMATİK TARAMA (Geniş Aralık)
     base = "https://trgoals"
-    start_range = 1520 # Aramaya 1520'den başlatalım (zamandan tasarruf)
-    end_range = 1545
+    start_range = 1515
+    end_range = 1600 # Aralığı 1600'e kadar açtık
     
     print(f"\n🔍 Otomatik arama başlatılıyor: trgoals{start_range}.xyz → trgoals{end_range-1}.xyz")
     
     for i in range(start_range, end_range):
         test_domain = f"{base}{i}.xyz"
         try:
-            print(f"   Kontrol ediliyor: {test_domain}...", end=" ")
+            print(f"   Kontrol: {test_domain}...", end=" ")
+            sys.stdout.flush()
             
             try:
-                response = page.goto(test_domain, timeout=6000, wait_until='domcontentloaded')
+                # Timeout 10 saniye yaptık (Hızlı tarama ama sabırlı)
+                response = page.goto(test_domain, timeout=10000, wait_until='domcontentloaded')
             except PlaywrightError:
-                print("❌ Ulaşılamadı/Zaman Aşımı")
+                print("❌ Zaman Aşımı / Ulaşılamadı")
                 continue
 
             final_url = page.url.rstrip('/')
             
-            # Durum Analizi
+            # --- KONTROLLER ---
             if not response.ok:
                 print(f"❌ Hata Kodu: {response.status}")
                 continue
                 
             if "giris" in final_url:
-                print(f"⚠️ Giriş sayfasına attı (Red)")
+                print(f"⚠️ Giriş Sayfası (Red)")
                 continue
                 
             if not domain_pattern.match(final_url):
-                print(f"⚠️ Format dışı URL: {final_url}")
+                print(f"⚠️ Alakasız Site: {final_url}")
                 continue
 
-            # Her şey yolundaysa
+            # Eğer buraya geldiyse doğru sitedir
             print(f"✅ BAŞARILI!")
-            print(f"   Tespit Edilen Aktif Domain: {final_url}")
+            print(f"   🎯 Tespit Edilen Aktif Domain: {final_url}")
             return final_url
                 
         except Exception as e:
-            print(f"❌ Beklenmedik Hata: {e}")
+            print(f"❌ Hata: {e}")
             continue
             
     return None
 
 def main():
     with sync_playwright() as p:
-        print("🚀 Trgoals M3U8 İndirici (v2 - Debug Modu) Başlatılıyor...")
+        print("🚀 Trgoals M3U8 İndirici (V3 - Stealth & Timeout Fix) Başlatılıyor...")
         
+        # --- BOT KORUMASINI AŞMA AYARLARI ---
         browser_args = [
             '--autoplay-policy=no-user-gesture-required',
+            '--disable-blink-features=AutomationControlled', # En kritik ayar bu
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--disable-infobars',
+            '--window-size=1920,1080'
         ]
         
         browser = p.chromium.launch(headless=True, args=browser_args)
         
         context = browser.new_context(
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            viewport={'width': 1920, 'height': 1080},
             ignore_https_errors=True
         )
         page = context.new_page()
+
+        # Bot tespitini engellemek için ekstra script
+        page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+        """)
 
         # 1. ADIM: Domain Bul
         domain = find_working_domain(page)
 
         if not domain:
-            print("\n❌ Hata: Hiçbir çalışan domain bulunamadı.")
+            print("\n❌ Kritik Hata: Hiçbir çalışan domain bulunamadı.")
+            print("   Lütfen internet bağlantınızı kontrol edin veya VPN kapatıp deneyin.")
             browser.close()
             sys.exit(1)
 
         # 2. ADIM: Kanal Listesi
         print(f"\n📡 Kanal listesi taranacak...")
-        # Kanal listesini aynen koruyoruz
         channels = {
             "yayinzirve": ("beIN Sports 1 ☪️", "BeinSports"),
             "yayininat": ("beIN Sports 1 ⭐", "BeinSports"),
@@ -140,7 +149,7 @@ def main():
         output_filename = "kanallar.m3u8"
         created = 0
         
-        # Akıllı Link Bulucu Regex
+        # Akıllı Link Bulucu Regex (.sbs linklerini bulur)
         regex_pattern = re.compile(r'["\'](https?://[a-zA-Z0-9.-]+\.sbs/?)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
@@ -151,9 +160,10 @@ def main():
                 url = f"{domain}/channel.html?id={channel_id}"
                 
                 try:
-                    page.goto(url, timeout=15000, wait_until='domcontentloaded')
+                    # Sayfa yükleme süresini de 20sn yaptık
+                    page.goto(url, timeout=20000, wait_until='domcontentloaded')
                 except:
-                    print("-> ❌ Sayfa yüklenemedi.")
+                    print("-> ❌ Sayfa yüklenemedi (Timeout).")
                     continue
                 
                 content = page.content()
