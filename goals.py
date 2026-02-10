@@ -14,7 +14,8 @@ def find_working_domain(context):
 
     # 1. MANUEL KONTROL
     # Test için burayı bilerek 1512 yapabilirsin, kod aşağıda doğrusunu bulmalı.
-    MANUAL_DOMAIN = "https://trgoals1522.xyz/" 
+    # Güncel çalışan adresi biliyorsan buraya yazmak işlemi hızlandırır.
+    MANUAL_DOMAIN = "https://trgoals1529.xyz/" 
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     
     page = context.new_page()
@@ -31,19 +32,18 @@ def find_working_domain(context):
     except Exception as e:
         print(f"⚠️ Öncelikli domain başarısız.")
     finally:
-        page.close() # Sayfayı mutlaka kapat
+        page.close()
 
     # 2. OTOMATİK TARAMA
     base = "https://trgoals"
-    start_range = 1515
-    end_range = 1550 
+    start_range = 1525 # Güncel aralıklara yakın başlatalım
+    end_range = 1560 
     
     print(f"\n🔍 Otomatik arama başlatılıyor: {start_range} -> {end_range}")
     
     for i in range(start_range, end_range):
         test_domain = f"{base}{i}.xyz"
         
-        # Her domain denemesi için YENİ bir sayfa açıyoruz (Kritik Nokta)
         page = context.new_page()
         
         try:
@@ -51,7 +51,6 @@ def find_working_domain(context):
             sys.stdout.flush()
             
             try:
-                # 8 saniye yeterli, çok beklemeye gerek yok
                 response = page.goto(test_domain, timeout=8000, wait_until='domcontentloaded')
             except PlaywrightError:
                 print("❌ Zaman Aşımı")
@@ -59,7 +58,6 @@ def find_working_domain(context):
 
             final_url = page.url.rstrip('/')
             
-            # --- KONTROLLER ---
             if not response.ok:
                 print(f"❌ Hata Kodu: {response.status}")
                 continue
@@ -72,7 +70,6 @@ def find_working_domain(context):
                 print(f"⚠️ Alakasız Site")
                 continue
 
-            # BAŞARILI
             print(f"✅ BAŞARILI!")
             print(f"   🎯 Tespit Edilen Aktif Domain: {final_url}")
             return final_url
@@ -80,16 +77,14 @@ def find_working_domain(context):
         except Exception as e:
             print(f"❌ Hata")
         finally:
-            # İşimiz bitince sayfayı kapatıp hafızayı temizliyoruz
             page.close()
-            # Bot korumasına yakalanmamak için 1.5 saniye bekle
             time.sleep(1.5)
             
     return None
 
 def main():
     with sync_playwright() as p:
-        print("🚀 Trgoals M3U8 İndirici (V4 - Anti-Detect Modu) Başlatılıyor...")
+        print("🚀 Trgoals M3U8 İndirici (V5 - Yeni URL Yapısı /mono.m3u8) Başlatılıyor...")
         
         # Gizlilik ayarları
         browser_args = [
@@ -109,7 +104,7 @@ def main():
             ignore_https_errors=True
         )
 
-        # 1. ADIM: Domain Bul (Artık context gönderiyoruz)
+        # 1. ADIM: Domain Bul
         domain = find_working_domain(context)
 
         if not domain:
@@ -120,9 +115,9 @@ def main():
         # 2. ADIM: Kanal Listesi
         print(f"\n📡 Kanal listesi taranacak...")
         
-        # Kanal işlemleri için tek bir sayfa yeterli
         page = context.new_page()
 
+        # Kanal listesi (ID'ler aynı kalabilir, çünkü site ID'ye göre yönlendirme yapıyor)
         channels = {
             "yayinzirve": ("beIN Sports 1 ☪️", "BeinSports"),
             "yayininat": ("beIN Sports 1 ⭐", "BeinSports"),
@@ -138,6 +133,7 @@ def main():
             "yayint1": ("Tivibu Sports 1", "Tivibu"),
             "yayint2": ("Tivibu Sports 2", "Tivibu"),
             "yayint3": ("Tivibu Sports 3", "Tivibu"),
+            "yayint4": ("Tivibu Sports 4", "Tivibu"),
             "yayinsmarts": ("Smart Sports", "Smart Sports"),
             "yayinsms2": ("Smart Sports 2", "Smart Sports"),
             "yayinnbatv": ("NBA TV", "NBA"),
@@ -148,14 +144,20 @@ def main():
             "yayinex1": ("Tâbii 1", "Tabii"),
             "yayineu1": ("Euro Sport 1", "Euro Sport"),
             "yayineu2": ("Euro Sport 2", "Euro Sport"),
+            "yayintrt1": ("TRT 1", "TRT"),
+            "yayintrtspor": ("TRT Spor", "TRT"),
+            "yayintrtspor2": ("TRT Spor 2", "TRT")
         }
 
         m3u_content = []
         output_filename = "kanallar.m3u8"
         created = 0
         
-        # Akıllı Link Bulucu (.sbs linklerini yakalar)
-        regex_pattern = re.compile(r'["\'](https?://[a-zA-Z0-9.-]+\.sbs/?)["\']', re.IGNORECASE)
+        # --- KRİTİK DEĞİŞİKLİK ---
+        # Eski Regex: Sadece base domain'i (.sbs) buluyordu.
+        # Yeni Regex: .sbs ile başlayan ve .m3u8 ile biten TAM linki bulur.
+        # Örnek yakalama: https://ofx.d72577a9dd0ec26.sbs/b2/mono.m3u8
+        regex_pattern = re.compile(r'["\'](https?://[a-zA-Z0-9.-]+\.sbs/[^"\']*?\.m3u8)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             try:
@@ -167,16 +169,17 @@ def main():
                 try:
                     page.goto(url, timeout=15000, wait_until='domcontentloaded')
                     content = page.content()
+                    
+                    # Regex ile tam linki ara
                     match = regex_pattern.search(content)
 
                     if match:
-                        baseurl = match.group(1)
-                        if not baseurl.endswith('/'): baseurl += '/'
-                        direct_url = f"{baseurl}{channel_id}.m3u8"
+                        # Artık linki kendimiz oluşturmuyoruz, doğrudan sayfadan çekiyoruz.
+                        full_video_url = match.group(1)
                         
                         m3u_content.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="{category}",{channel_name}')
-                        m3u_content.append(direct_url)
-                        print(f"-> ✅ Link: ...{direct_url[-35:]}")
+                        m3u_content.append(full_video_url)
+                        print(f"-> ✅ Link: ...{full_video_url[-40:]}") # Linkin son kısmını göster
                         created += 1
                     else:
                         print("-> ❌ Link bulunamadı.")
@@ -190,10 +193,16 @@ def main():
         browser.close()
 
         if created > 0:
+            # Header'ları da güncelledik (Önceki konuşmamızdaki düzeltmelerle birlikte)
             header = f"""#EXTM3U
-#EXT-X-USER-AGENT:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
-#EXT-X-REFERER:{domain}/
-#EXT-X-ORIGIN:{domain}"""
+#EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36
+#EXTVLCOPT:http-referrer={domain}/channel.html
+#EXT-X-USER-AGENT:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36
+#EXT-X-REFERER:{domain}/channel.html
+#EXT-X-ORIGIN:{domain}
+#EXT-X-HEADER:Sec-Fetch-Dest=empty
+#EXT-X-HEADER:Sec-Fetch-Mode=cors
+#EXT-X-HEADER:Sec-Fetch-Site=cross-site"""
             
             with open(output_filename, "w", encoding="utf-8") as f:
                 f.write(header + "\n")
