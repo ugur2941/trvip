@@ -13,9 +13,8 @@ def find_working_domain(context):
     domain_pattern = re.compile(r'https?://(?:www\.)?trgoals[0-9]+\.xyz', re.IGNORECASE)
 
     # 1. MANUEL KONTROL
-    # Test için burayı bilerek 1512 yapabilirsin, kod aşağıda doğrusunu bulmalı.
-    # Güncel çalışan adresi biliyorsan buraya yazmak işlemi hızlandırır.
-    MANUAL_DOMAIN = "https://trgoals1529.xyz/" 
+    # En son çalışan adresi buraya yazmak işlemi hızlandırır.
+    MANUAL_DOMAIN = "https://trgoals1531.xyz/" 
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     
     page = context.new_page()
@@ -36,20 +35,17 @@ def find_working_domain(context):
 
     # 2. OTOMATİK TARAMA
     base = "https://trgoals"
-    start_range = 1525 # Güncel aralıklara yakın başlatalım
+    start_range = 1528
     end_range = 1560 
     
     print(f"\n🔍 Otomatik arama başlatılıyor: {start_range} -> {end_range}")
     
     for i in range(start_range, end_range):
         test_domain = f"{base}{i}.xyz"
-        
         page = context.new_page()
-        
         try:
             print(f"   Kontrol: {test_domain}...", end=" ")
             sys.stdout.flush()
-            
             try:
                 response = page.goto(test_domain, timeout=8000, wait_until='domcontentloaded')
             except PlaywrightError:
@@ -61,11 +57,9 @@ def find_working_domain(context):
             if not response.ok:
                 print(f"❌ Hata Kodu: {response.status}")
                 continue
-                
             if "giris" in final_url:
                 print(f"⚠️ Giriş Sayfası")
                 continue
-                
             if not domain_pattern.match(final_url):
                 print(f"⚠️ Alakasız Site")
                 continue
@@ -84,9 +78,8 @@ def find_working_domain(context):
 
 def main():
     with sync_playwright() as p:
-        print("🚀 Trgoals M3U8 İndirici (V5 - Yeni URL Yapısı /mono.m3u8) Başlatılıyor...")
+        print("🚀 Trgoals M3U8 İndirici (V6 - Dinamik Link Oluşturucu) Başlatılıyor...")
         
-        # Gizlilik ayarları
         browser_args = [
             '--autoplay-policy=no-user-gesture-required',
             '--disable-blink-features=AutomationControlled', 
@@ -114,75 +107,82 @@ def main():
 
         # 2. ADIM: Kanal Listesi
         print(f"\n📡 Kanal listesi taranacak...")
-        
         page = context.new_page()
 
-        # Kanal listesi (ID'ler aynı kalabilir, çünkü site ID'ye göre yönlendirme yapıyor)
+        # GÜNCELLENMİŞ KANAL LISTESI (Senin verdiğin yeni formatlara göre)
+        # ID'ler artık linkteki klasör ismidir. Örn: .../b2/mono.m3u8 için ID "b2" dir.
         channels = {
-            "yayinzirve": ("beIN Sports 1 ☪️", "BeinSports"),
-            "yayininat": ("beIN Sports 1 ⭐", "BeinSports"),
-            "yayin1": ("beIN Sports 1 ♾️", "BeinSports"),
-            "yayinb2": ("beIN Sports 2", "BeinSports"),
-            "yayinb3": ("beIN Sports 3", "BeinSports"),
-            "yayinb4": ("beIN Sports 4", "BeinSports"),
-            "yayinb5": ("beIN Sports 5", "BeinSports"),
-            "yayinbm1": ("beIN Sports 1 Max", "BeinSports"),
-            "yayinbm2": ("beIN Sports 2 Max", "BeinSports"),
-            "yayinss": ("Saran Sports 1", "S Sports"),
-            "yayinss2": ("Saran Sports 2", "S Sports"),
-            "yayint1": ("Tivibu Sports 1", "Tivibu"),
-            "yayint2": ("Tivibu Sports 2", "Tivibu"),
-            "yayint3": ("Tivibu Sports 3", "Tivibu"),
-            "yayint4": ("Tivibu Sports 4", "Tivibu"),
-            "yayinsmarts": ("Smart Sports", "Smart Sports"),
-            "yayinsms2": ("Smart Sports 2", "Smart Sports"),
-            "yayinnbatv": ("NBA TV", "NBA"),
-            "yayinatv": ("ATV", "Ulusal"),
-            "yayintv8": ("TV8", "Ulusal"),
-            "yayintv85": ("TV8.5", "Ulusal"),
-            "yayinas": ("A Spor", "Ulusal"),
-            "yayinex1": ("Tâbii 1", "Tabii"),
-            "yayineu1": ("Euro Sport 1", "Euro Sport"),
-            "yayineu2": ("Euro Sport 2", "Euro Sport"),
-            "yayintrt1": ("TRT 1", "TRT"),
-            "yayintrtspor": ("TRT Spor", "TRT"),
-            "yayintrtspor2": ("TRT Spor 2", "TRT")
+            "trgoals": ("beIN Sports 1", "BeinSports"),  # Link yapısı: .../trgoals/mono.m3u8
+            "b2": ("beIN Sports 2", "BeinSports"),
+            "b3": ("beIN Sports 3", "BeinSports"),
+            "b4": ("beIN Sports 4", "BeinSports"),
+            "b5": ("beIN Sports 5", "BeinSports"),
+            "bm1": ("beIN Sports 1 Max", "BeinSports"),
+            "bm2": ("beIN Sports 2 Max", "BeinSports"),
+            
+            "ss": ("S Sport 1", "S Sports"),
+            "ss2": ("S Sport 2", "S Sports"),
+            
+            "t1": ("Tivibu Sports 1", "Tivibu"),
+            "t2": ("Tivibu Sports 2", "Tivibu"),
+            "t3": ("Tivibu Sports 3", "Tivibu"),
+            "t4": ("Tivibu Sports 4", "Tivibu"),
+            "t5": ("Tivibu Sports 5", "Tivibu"),
+            "t6": ("Tivibu Sports 6", "Tivibu"),
+            
+            "smarts": ("Smart Spor", "Smart Sports"),
+            "sms2": ("Smart Spor 2", "Smart Sports"),
+            
+            "trt1": ("TRT 1", "TRT"),
+            "trtspor": ("TRT Spor", "TRT"),
+            "trtspor2": ("TRT Spor 2", "TRT"),
+            
+            "as": ("A Spor", "Ulusal"),
+            "atv": ("ATV", "Ulusal"),
+            "tv8": ("TV8", "Ulusal"),
+            "tv85": ("TV8.5", "Ulusal"),
+            
+            "nbatv": ("NBA TV", "NBA"),
+            "eu1": ("Eurosport 1", "Euro Sport"),
+            "eu2": ("Eurosport 2", "Euro Sport"),
         }
 
         m3u_content = []
         output_filename = "kanallar.m3u8"
         created = 0
         
-        # --- KRİTİK DEĞİŞİKLİK ---
-        # Eski Regex: Sadece base domain'i (.sbs) buluyordu.
-        # Yeni Regex: .sbs ile başlayan ve .m3u8 ile biten TAM linki bulur.
-        # Örnek yakalama: https://ofx.d72577a9dd0ec26.sbs/b2/mono.m3u8
-        regex_pattern = re.compile(r'["\'](https?://[a-zA-Z0-9.-]+\.sbs/[^"\']*?\.m3u8)["\']', re.IGNORECASE)
+        # Regex: Sadece B_URL değişkenini yakalar (https://....sbs/)
+        regex_pattern = re.compile(r'B_URL\s*=\s*["\'](https?://[^"\']+\.sbs/?)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             try:
-                print(f"[{i}/{len(channels)}] {channel_name}...", end=' ')
+                print(f"[{i}/{len(channels)}] {channel_name} ({channel_id})...", end=' ')
                 sys.stdout.flush() 
 
+                # Siteye giderken kanal ID'sini parametre olarak ekliyoruz
                 url = f"{domain}/channel.html?id={channel_id}"
                 
                 try:
                     page.goto(url, timeout=15000, wait_until='domcontentloaded')
                     content = page.content()
                     
-                    # Regex ile tam linki ara
+                    # Sayfadan B_URL'i (Base URL) çekiyoruz
                     match = regex_pattern.search(content)
 
                     if match:
-                        # Artık linki kendimiz oluşturmuyoruz, doğrudan sayfadan çekiyoruz.
-                        full_video_url = match.group(1)
+                        base_url = match.group(1)
+                        if not base_url.endswith('/'): base_url += '/'
+                        
+                        # LİNK OLUŞTURMA: Base URL + Kanal ID + /mono.m3u8
+                        # Örn: https://ofx...sbs/ + b2 + /mono.m3u8
+                        final_stream_url = f"{base_url}{channel_id}/mono.m3u8"
                         
                         m3u_content.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="{category}",{channel_name}')
-                        m3u_content.append(full_video_url)
-                        print(f"-> ✅ Link: ...{full_video_url[-40:]}") # Linkin son kısmını göster
+                        m3u_content.append(final_stream_url)
+                        print(f"-> ✅ Link: ...{final_stream_url[-40:]}")
                         created += 1
                     else:
-                        print("-> ❌ Link bulunamadı.")
+                        print("-> ❌ B_URL bulunamadı.")
                 except:
                     print("-> ❌ Zaman aşımı.")
                     
@@ -193,7 +193,7 @@ def main():
         browser.close()
 
         if created > 0:
-            # Header'ları da güncelledik (Önceki konuşmamızdaki düzeltmelerle birlikte)
+            # Header'lar (ExoPlayer için gerekli olanlar dahil)
             header = f"""#EXTM3U
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36
 #EXTVLCOPT:http-referrer={domain}/channel.html
