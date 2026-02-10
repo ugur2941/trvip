@@ -12,8 +12,7 @@ def find_working_domain(context):
     # Regex: https/http, www opsiyonel, trgoals + sayılar + .xyz
     domain_pattern = re.compile(r'https?://(?:www\.)?trgoals[0-9]+\.xyz', re.IGNORECASE)
 
-    # 1. MANUEL KONTROL
-    # En son çalışan adresi buraya yazmak işlemi hızlandırır.
+    # 1. MANUEL KONTROL (Hızlandırmak için çalışan adresi buraya yazın)
     MANUAL_DOMAIN = "https://trgoals1531.xyz/" 
     print(f"\n🔍 Öncelikli domain deneniyor: {MANUAL_DOMAIN}")
     
@@ -35,7 +34,7 @@ def find_working_domain(context):
 
     # 2. OTOMATİK TARAMA
     base = "https://trgoals"
-    start_range = 1528
+    start_range = 1530
     end_range = 1560 
     
     print(f"\n🔍 Otomatik arama başlatılıyor: {start_range} -> {end_range}")
@@ -78,7 +77,7 @@ def find_working_domain(context):
 
 def main():
     with sync_playwright() as p:
-        print("🚀 Trgoals M3U8 İndirici (V6 - Dinamik Link Oluşturucu) Başlatılıyor...")
+        print("🚀 Trgoals M3U8 İndirici (V7 - Network Sniffing & Auto-Click) Başlatılıyor...")
         
         browser_args = [
             '--autoplay-policy=no-user-gesture-required',
@@ -109,82 +108,106 @@ def main():
         print(f"\n📡 Kanal listesi taranacak...")
         page = context.new_page()
 
-        # GÜNCELLENMİŞ KANAL LISTESI (Senin verdiğin yeni formatlara göre)
-        # ID'ler artık linkteki klasör ismidir. Örn: .../b2/mono.m3u8 için ID "b2" dir.
         channels = {
-            "trgoals": ("beIN Sports 1", "BeinSports"),  # Link yapısı: .../trgoals/mono.m3u8
+            "trgoals": ("beIN Sports 1", "BeinSports"),
             "b2": ("beIN Sports 2", "BeinSports"),
             "b3": ("beIN Sports 3", "BeinSports"),
             "b4": ("beIN Sports 4", "BeinSports"),
             "b5": ("beIN Sports 5", "BeinSports"),
             "bm1": ("beIN Sports 1 Max", "BeinSports"),
             "bm2": ("beIN Sports 2 Max", "BeinSports"),
-            
             "ss": ("S Sport 1", "S Sports"),
             "ss2": ("S Sport 2", "S Sports"),
-            
             "t1": ("Tivibu Sports 1", "Tivibu"),
             "t2": ("Tivibu Sports 2", "Tivibu"),
             "t3": ("Tivibu Sports 3", "Tivibu"),
             "t4": ("Tivibu Sports 4", "Tivibu"),
-            "t5": ("Tivibu Sports 5", "Tivibu"),
-            "t6": ("Tivibu Sports 6", "Tivibu"),
-            
             "smarts": ("Smart Spor", "Smart Sports"),
             "sms2": ("Smart Spor 2", "Smart Sports"),
-            
-            "trt1": ("TRT 1", "TRT"),
             "trtspor": ("TRT Spor", "TRT"),
-            "trtspor2": ("TRT Spor 2", "TRT"),
-            
             "as": ("A Spor", "Ulusal"),
             "atv": ("ATV", "Ulusal"),
             "tv8": ("TV8", "Ulusal"),
             "tv85": ("TV8.5", "Ulusal"),
-            
             "nbatv": ("NBA TV", "NBA"),
             "eu1": ("Eurosport 1", "Euro Sport"),
-            "eu2": ("Eurosport 2", "Euro Sport"),
         }
 
         m3u_content = []
         output_filename = "kanallar.m3u8"
         created = 0
+        debug_saved = False
         
-        # Regex: Sadece B_URL değişkenini yakalar (https://....sbs/)
-        regex_pattern = re.compile(r'B_URL\s*=\s*["\'](https?://[^"\']+\.sbs/?)["\']', re.IGNORECASE)
+        # Regex: Sadece .sbs ile biten domaini bulmaya çalışır (Yedek Plan)
+        # Örnek: https://ofx...sbs/
+        regex_fallback = re.compile(r'["\'](https?://[^"\'\s]+\.sbs/?)["\']', re.IGNORECASE)
 
         for i, (channel_id, (channel_name, category)) in enumerate(channels.items(), 1):
             try:
                 print(f"[{i}/{len(channels)}] {channel_name} ({channel_id})...", end=' ')
                 sys.stdout.flush() 
 
-                # Siteye giderken kanal ID'sini parametre olarak ekliyoruz
                 url = f"{domain}/channel.html?id={channel_id}"
+                
+                # AĞ DİNLEYİCİSİ (SNIFFER)
+                captured_m3u8 = None
+                def handle_request(request):
+                    nonlocal captured_m3u8
+                    if ".m3u8" in request.url and "mono.m3u8" in request.url:
+                        captured_m3u8 = request.url
+
+                # Sayfa isteği yakalamaya başlasın
+                page.on("request", handle_request)
                 
                 try:
                     page.goto(url, timeout=15000, wait_until='domcontentloaded')
-                    content = page.content()
                     
-                    # Sayfadan B_URL'i (Base URL) çekiyoruz
-                    match = regex_pattern.search(content)
+                    # Sayfaya tıkla (Play'i tetiklemek için)
+                    try:
+                        page.click('body', timeout=2000)
+                    except:
+                        pass
+                    
+                    # Linkin düşmesi için bekle
+                    start_time = time.time()
+                    while time.time() - start_time < 5: # 5 saniye bekle
+                        if captured_m3u8:
+                            break
+                        page.wait_for_timeout(500)
 
-                    if match:
-                        base_url = match.group(1)
-                        if not base_url.endswith('/'): base_url += '/'
-                        
-                        # LİNK OLUŞTURMA: Base URL + Kanal ID + /mono.m3u8
-                        # Örn: https://ofx...sbs/ + b2 + /mono.m3u8
-                        final_stream_url = f"{base_url}{channel_id}/mono.m3u8"
-                        
+                    # 1. YÖNTEM: AĞDAN YAKALAMA
+                    if captured_m3u8:
                         m3u_content.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="{category}",{channel_name}')
-                        m3u_content.append(final_stream_url)
-                        print(f"-> ✅ Link: ...{final_stream_url[-40:]}")
+                        m3u_content.append(captured_m3u8)
+                        print(f"-> ✅ Link (Sniff): ...{captured_m3u8[-40:]}")
                         created += 1
                     else:
-                        print("-> ❌ B_URL bulunamadı.")
-                except:
-                    print("-> ❌ Zaman aşımı.")
+                        # 2. YÖNTEM: HTML TARAMA (FALLBACK)
+                        content = page.content()
+                        match = regex_fallback.search(content)
+                        
+                        if match:
+                            base_url = match.group(1)
+                            if not base_url.endswith('/'): base_url += '/'
+                            final_stream_url = f"{base_url}{channel_id}/mono.m3u8"
+                            
+                            m3u_content.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="{category}",{channel_name}')
+                            m3u_content.append(final_stream_url)
+                            print(f"-> ✅ Link (Regex): ...{final_stream_url[-40:]}")
+                            created += 1
+                        else:
+                            print("-> ❌ Link bulunamadı.")
+                            # Hata ayıklama için HTML kaydet (Sadece ilk hata)
+                            if not debug_saved:
+                                with open("debug_channel.html", "w", encoding="utf-8") as f:
+                                    f.write(content)
+                                print("   ℹ️ Hata ayıklama için 'debug_channel.html' dosyası oluşturuldu.")
+                                debug_saved = True
+
+                except Exception as e:
+                    print(f"-> ❌ Hata: {e}")
+                finally:
+                    page.remove_listener("request", handle_request)
                     
             except Exception as e:
                 print(f"-> ❌ Hata: {e}")
@@ -193,12 +216,12 @@ def main():
         browser.close()
 
         if created > 0:
-            # Header'lar (ExoPlayer için gerekli olanlar dahil)
+            # Header güncellemesi (Browser loglarına göre)
             header = f"""#EXTM3U
 #EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36
-#EXTVLCOPT:http-referrer={domain}/channel.html
+#EXTVLCOPT:http-referrer={domain}/
 #EXT-X-USER-AGENT:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36
-#EXT-X-REFERER:{domain}/channel.html
+#EXT-X-REFERER:{domain}/
 #EXT-X-ORIGIN:{domain}
 #EXT-X-HEADER:Sec-Fetch-Dest=empty
 #EXT-X-HEADER:Sec-Fetch-Mode=cors
