@@ -9,7 +9,7 @@ def find_working_domain(context):
 
     # Otomatik artış taraması
     print("📈 Otomatik artış taraması yapılıyor (1041 → 1060)...")
-    for num in range(1041, 1061):        # İstersen 1070'e kadar çıkar
+    for num in range(1051, 1061):        # İstersen 1070'e kadar çıkar
         test_url = f"https://taraftarium{num}.xyz/"
         print(f"   Deniyor → taraftarium{num}.xyz", end=" ")
 
