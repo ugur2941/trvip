@@ -15,7 +15,7 @@ def find_working_domain(context):
     """Domain serisini artan şekilde tarar ve yanlış redirect domainlerini kabul etmez."""
     print("\n🔍 Çalışan domain aranıyor...\n")
 
-    start_num = 1041
+    start_num = 1061
     end_num = 1300
 
     print(f"📈 Otomatik artan tarama yapılıyor ({start_num} → {end_num})...")
