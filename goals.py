@@ -2,37 +2,78 @@ import re
 import sys
 import time
 from playwright.sync_api import sync_playwright, Error as PlaywrightError
+from urllib.parse import urlparse
+
+def get_host(url):
+    host = urlparse(url).netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
 
 def find_working_domain(context):
-    """Taraftarium104x serisini otomatik tarar"""
-    print("\n🔍 Çalışan Taraftarium domain aranıyor...\n")
+    """Domain serisini artan şekilde tarar ve yanlış redirect domainlerini kabul etmez."""
+    print("\n🔍 Çalışan domain aranıyor...\n")
 
-    # Otomatik artış taraması
-    print("📈 Otomatik artış taraması yapılıyor (1041 → 1060)...")
-    for num in range(1051, 1061):        # İstersen 1070'e kadar çıkar
-        test_url = f"https://taraftarium{num}.xyz/"
-        print(f"   Deniyor → taraftarium{num}.xyz", end=" ")
+    start_num = 1041
+    end_num = 1300
+
+    print(f"📈 Otomatik artan tarama yapılıyor ({start_num} → {end_num})...")
+
+    blocked_hosts = {
+        "taraftariumgir.is",
+    }
+
+    for num in range(start_num, end_num + 1):
+        expected_host = f"taraftarium{num}.xyz"
+        test_url = f"https://{expected_host}/"
+
+        print(f"   Deniyor → {expected_host}", end=" ")
 
         page = context.new_page()
+
         try:
-            response = page.goto(test_url, timeout=12000, wait_until='domcontentloaded')
-            if not response or not response.ok:
-                print("❌")
+            response = page.goto(
+                test_url,
+                timeout=12000,
+                wait_until="domcontentloaded"
+            )
+
+            final_url = page.url.rstrip("/")
+            final_host = get_host(final_url)
+
+            if final_host != expected_host:
+                print(f"↪ redirect: {final_host} ❌")
                 continue
 
-            final_url = page.url.rstrip('/')
+            if final_host in blocked_hosts:
+                print("❌ eski giriş domaini")
+                continue
+
+            if not response or not response.ok:
+                status = response.status if response else "cevap yok"
+                print(f"❌ HTTP {status}")
+                continue
+
             title = page.title().lower()
 
-            if any(x in title for x in ["giris", "cloudflare", "attention", "just a moment", "dikkat", "bekleyin"]):
+            if any(x in title for x in [
+                "giris",
+                "cloudflare",
+                "attention",
+                "just a moment",
+                "dikkat",
+                "bekleyin"
+            ]):
                 print("⚠️ Koruma sayfası")
                 continue
 
             print("✅ BULUNDU!")
-            page.close()
-            return final_url
+            return f"https://{expected_host}"
 
-        except Exception:
-            print("❌")
+        except Exception as e:
+            print(f"❌ {str(e)[:60]}")
+
         finally:
             page.close()
             time.sleep(1.1)
